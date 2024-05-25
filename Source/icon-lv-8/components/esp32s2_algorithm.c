@@ -6,7 +6,7 @@
 #include "esp32s2_buzzer.h"
 #define TAG "inside algorithm.c"
 #define TEMP_HIGH_EXIT_THRESHOLD 55.0
-//#define DEBUG 1
+#define DEBUG 1
 char dev_id[12];
 /*Variable declarations*/
 time_t timeinfo = 0;
@@ -1188,6 +1188,7 @@ void state_change_algorithm() {
 						(mains_chg_flag == 0)&&(mains_sol_chg_flag == 0))
 					{
 						algo_param.dev_algo_state = ALGO_STATE_CHARG_INHIBIT_1;
+                        ESP_LOGI("DEBUG_VINE", "DEBUG POINT 7, ALGO STATE CHANGED TO STATE 1");
                         solar_cycling=0;
                         ESP_LOGI("DEBUG_ALGO" , "Reason for state change : 2 [MAINS AVAILABLE]");
                         state_change_reason=2; //Mains available
@@ -1305,11 +1306,15 @@ void state_change_algorithm() {
 			case ALGO_STATE_SOL_CHG_3:
 				if((algo_param.cur_bat_v > bat_voltage_settable) || \
 					(low_sol_flag == 1)||(mains_sol_chg_flag==1)||(early_ft_entry)){
+                    ESP_LOGI("DEBUG_VINE" , " DEBUG POINT 1: current state: %d, cur_bat_v: %f, bat_v_settable: %f,low_sol_flag: %d, mains_sol_chg_flag: %d early_ft_entry: %d",
+                            algo_param.dev_algo_state,algo_param.cur_bat_v,
+                            bat_voltage_settable,low_sol_flag, mains_sol_chg_flag,early_ft_entry);
                     solar_cycling=1;
                     if((algo_param.cur_bat_v > bat_max_v)||(early_ft_entry))
 					{
                         prevent_solar_charging_of_device();
 						bat_full_flag = 1;
+                        ESP_LOGI("DEBUG_VINE", "DEBUG POINT 2 , BATTERY FULL");
 					}
                     if((algo_param.cur_bat_v > bat_voltage_settable))
                     {
@@ -1317,6 +1322,7 @@ void state_change_algorithm() {
                         ESP_LOGI("DEBUG_ALGO" , "Reason for state change : 10 [BAT V REACHED MAX]");
                         state_change_reason=10; //Battery voltage reached maximum
                         solar_equ_cnt++;
+                        ESP_LOGI("DEBUG_VINE", "DEBUG POINT 3");
                     }
                     if((low_sol_flag == 1))
                     {
@@ -1324,8 +1330,10 @@ void state_change_algorithm() {
                         solar_cycling=1;
                         ESP_LOGI("DEBUG_ALGO" , "Reason for state change : 11 [LOW SOLAR CURRENT EXIT]");
                         state_change_reason=11; //Low solar current exit
+                        ESP_LOGI("DEBUG_VINE", "DEBUG POINT 4");
                     }
 					algo_param.dev_algo_state = ALGO_STATE_CHARG_INHIBIT_1;
+                    ESP_LOGI("DEBUG_VINE", "DEBUG POINT 5, ALGO STATE CHANGED TO STATE 1");
 				}
 				break;
 
@@ -2296,6 +2304,7 @@ void check_battery_voltage(){
         }
         else if(algo_param.dev_algo_state == ALGO_STATE_SOL_CHG_3){ //If state is 3 change to 1
             algo_param.dev_algo_state = ALGO_STATE_CHARG_INHIBIT_1;
+            ESP_LOGI("DEBUG_VINE", "DEBUG POINT 6, ALGO STATE CHANGED TO STATE 1");
         }
         bat_equ_param.equ_sol_sw_stat = 0;
         sol_mos_sw_off();

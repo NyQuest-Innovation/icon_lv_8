@@ -330,7 +330,7 @@ typedef enum{
 typedef enum{
     HW_VERSION = 0x0300,
     //FW_VERSION = 0x0811, // Default version when received
-    FW_VERSION = 0x0206,
+    FW_VERSION = 0x0650,
 }version_t;
 
 extern volatile uint16_t system_flag;
