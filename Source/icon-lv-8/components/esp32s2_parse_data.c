@@ -123,6 +123,14 @@ void detect_domain_msg(cJSON *payload){
   }
 }
 
+void detect_ota_url(cJSON *payload){
+    cJSON *readInfo = cJSON_GetObjectItem(payload, "ota_url");
+    if(readInfo!=NULL){
+        ESP_LOGI(TAG,"Parse ota_url - %s",readInfo->valuestring);
+        update_spiffs(readInfo->valuestring,ota_url_update);
+    }
+}
+
 void httpsmsgparse(char *https_receive_buffer,https_request_buffer_body_t *param){  
   if( https_req_buff_peek(param) == update_certificate ){
     update_spiffs(https_receive_buffer,update_certificate);
@@ -134,9 +142,10 @@ void httpsmsgparse(char *https_receive_buffer,https_request_buffer_body_t *param
       ESP_LOGI(TAG,"Detected device");
       if(detect_msgType(payload)){
         ESP_LOGI(TAG,"Message type matched");
+        detect_domain_msg(payload);
+        detect_ota_url(payload);
         detect_write_msg(payload);
         detect_read_msg(payload);
-        detect_domain_msg(payload);
       }
     }
     cJSON_Delete(payload);

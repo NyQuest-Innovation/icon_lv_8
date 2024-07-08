@@ -7,6 +7,7 @@
 
 time_t timeinfor = 0;
 #define TAG "HTTPCLIENT"
+#define DYN_OTA_SUPPORT 1 // Dynamic OTA is supported
 
 // #define log_data_payload_length 0x2FFF
 uint8_t packet_length = 10;
@@ -399,7 +400,7 @@ void bidirectional_communication_commands(https_request_buffer_body_t *param){
 
         case get_information:
             //sprintf(buffer,"{\"dev_id\":\"%s\"}",dev_id);
-            sprintf(buffer,"{\"dev_id\":\"%s\",\"version\":\"%04X\"}",dev_id,FW_VERSION); // VIN Sending Version too
+            sprintf(buffer,"{\"dev_id\":\"%s\",\"version\":\"%04X\",\"dyn_ota\":\"%d\"}",dev_id,FW_VERSION,DYN_OTA_SUPPORT); // VIN Sending Version, dyn OTA support
             msgStruct.body = buffer;
             read_domain(url);
             strcat(url,"/api/getReadWriteInfo/");

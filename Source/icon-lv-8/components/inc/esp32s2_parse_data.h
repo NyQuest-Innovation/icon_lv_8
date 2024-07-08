@@ -22,6 +22,7 @@ typedef enum{
     read_certificate=8,
     ota_update=9,
     domain_update=10,
+    ota_url_update=11,
 }https_request_commands_t;
 
 typedef enum{
