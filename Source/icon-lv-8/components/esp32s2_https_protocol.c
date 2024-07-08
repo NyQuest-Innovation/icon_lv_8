@@ -434,11 +434,21 @@ void bidirectional_communication_commands(https_request_buffer_body_t *param){
             break;
 
         case send_response:
-            sprintf(buffer,"{\"dev_id\":\"%s\"}",dev_id);
-            msgStruct.body = buffer;
-            read_domain(url);
-            strcat(url,"/api/updateWriteStatus/");
-            fetch(url, &msgStruct);            
+            /* Add the flag 'writeStatus' indicating
+             * eeprom updation was success or not in the response
+             */
+            if(get_write_req_rxd_from_server() == true) {
+                sprintf(buffer,"{\"dev_id\":\"%s\",\"writeStatus\":\"%d\"}",dev_id,get_writeInfo_status());
+
+                msgStruct.body = buffer;
+                read_domain(url);
+                strcat(url,"/api/updateWriteStatus/");
+                fetch(url, &msgStruct);
+                /* After response to server is sent, clear the flag of data
+                 * from server received
+                 */
+                set_write_req_rxd_from_server(false);
+            }
             break;
 
         case update_useable_soc:

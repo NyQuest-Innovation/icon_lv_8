@@ -6,6 +6,8 @@
 #define TAG "parseJSON"
 
 extern https_request_buffer_body_t https_request_buffer_body;
+static bool writeInfo_status = false;
+static bool writeInfo_req_rxd_from_server = false;
 
 uint16_t write_info_address[98]={
   EE_SERV_IP_ADDR, EE_SERV_PORT_ADDR, EE_AP_SSID_ADDR, EE_AP_PSW_ADDR,    
@@ -189,6 +191,27 @@ void detect_read_msg(cJSON *payload){
   }
 }
 
+
+void set_writeInfo_status(bool status)
+{
+    writeInfo_status = status;
+}
+
+bool get_writeInfo_status()
+{
+    return writeInfo_status;
+}
+
+void set_write_req_rxd_from_server(bool status)
+{
+    writeInfo_req_rxd_from_server = status;
+}
+
+bool get_write_req_rxd_from_server()
+{
+    return writeInfo_req_rxd_from_server;
+}
+
 void parse_write_msg(cJSON *writeInfo)
 {
     uint8_t updated_eeprom_content = 0;
@@ -301,6 +324,21 @@ void parse_write_msg(cJSON *writeInfo)
     }
     load_wifi_param();
     load_sensor_constants();
+
+    if(get_write_req_rxd_from_server() == true) {
+        if(eeprom_updation_status == true) {
+            ESP_LOGI("SERVER UPDATE", "UPDATING EEPROM CONTENTS SUCCESS, SENDING FEED BACK AS SUCCESS");
+        } else {
+            ESP_LOGI("SERVER UPDATE", "UPDATING EEPROM CONTENTS FAILS, SENDING FEED BACK AS FAILURE");
+        }
+        // Set the flag indicating EEPROM updation was success or failure
+        set_writeInfo_status(eeprom_updation_status);
+        /* Q to send the response back to server, send the response only 
+         * if writeInfo has contents in it with flag indicating
+         * the EEPROM write is success or not
+         */
+        https_req_buff_write(&https_request_buffer_body,send_response);
+    }
 }
 
 void parse_read_msg(cJSON *readInfo) {

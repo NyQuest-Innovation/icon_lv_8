@@ -55,4 +55,7 @@ extern void detect_read_msg(cJSON *payload);
 extern void parse_write_msg(cJSON *writeInfo);
 extern void parse_read_msg(cJSON *readInfo);
 extern void test_parsing();
+bool get_writeInfo_status();
+void set_write_req_rxd_from_server(bool status);
+bool get_write_req_rxd_from_server();
 #endif
