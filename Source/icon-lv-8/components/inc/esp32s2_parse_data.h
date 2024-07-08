@@ -22,6 +22,7 @@ typedef enum{
     read_certificate=8,
     ota_update=9,
     domain_update=10,
+    ota_url_update=11,
 }https_request_commands_t;
 
 typedef enum{
@@ -54,4 +55,7 @@ extern void detect_read_msg(cJSON *payload);
 extern void parse_write_msg(cJSON *writeInfo);
 extern void parse_read_msg(cJSON *readInfo);
 extern void test_parsing();
+bool get_writeInfo_status();
+void set_write_req_rxd_from_server(bool status);
+bool get_write_req_rxd_from_server();
 #endif

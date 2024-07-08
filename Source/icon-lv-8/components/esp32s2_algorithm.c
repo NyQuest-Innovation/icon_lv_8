@@ -610,7 +610,7 @@ void state_change_algorithm() {
     
     if(enable_early_ft_entry){
         if((total_time>7200)&&(algo_param.dev_algo_state!=ALGO_STATE_BAT_SOL_FRC_TRIP_6)&&(algo_param.dev_algo_state!=ALGO_STATE_BAT_FRC_TRIP_4)&&(Bat_SOC>0.9*total_bat_capacity)){
-            //early_ft_entry=1;   // Commenting out as per Kiran's mail on June 6, 2024 with Subject 'Reg: iCON 24 test code for a customer'
+            early_ft_entry=1;
             enable_early_ft_entry=0;
         }
     }
@@ -2104,6 +2104,9 @@ turtle_algorithm()
      * This check is done to ensure that the no.of modules connected is not
      *  more than the requirement. Set the system to state 5*/
     if(algo_param.cur_sol_i>max_solar_current) {
+#if DEBUG
+        ESP_LOGI("DEBUG","CURRENT SOLAR I : %f, MAX_SOLAR_CURRENT: %f \n",algo_param.cur_sol_i,max_solar_current);
+#endif
         is_time_to_log=1;
         stop_solar_chg=1;   
     }
@@ -2463,10 +2466,16 @@ void load_sensor_constants(){
 #if DEBUG
     ESP_LOGI("-----","----------------------------------");
     ESP_LOGI("DEBUG","Rated_Bat_AH: %f \n",Rated_Bat_AH);
+    ESP_LOGI("DEBUG","bat_age: %d \n",bat_age);
+    ESP_LOGI("DEBUG","dev_state_flag: %d \n",dev_state_flag);
     ESP_LOGI("DEBUG","eve_soc_corr: %f \n",eve_soc_corr);
     ESP_LOGI("DEBUG","night_soc_corr: %f \n",night_soc_corr);
     ESP_LOGI("DEBUG","bat_frc_trip_exit_v_thr: %f \n",bat_frc_trip_exit_v_thr);
     ESP_LOGI("DEBUG","bat_vol: %f \n",bat_vol);
+    ESP_LOGI("DEBUG","max_frc_per_day: %d \n",max_frc_per_day);
+    ESP_LOGI("DEBUG","sol_inst: %f \n",sol_inst);
+    ESP_LOGI("DEBUG","bat_mains_chg_in_v_thr: %f \n",bat_mains_chg_in_v_thr);
+    ESP_LOGI("DEBUG","weight1: %f \n",weight1);
     ESP_LOGI("-----","----------------------------------");
 #endif
     sss=i2c_eeprom_read_byte(SER_ASSERT_STATE);
@@ -2493,6 +2502,12 @@ void load_sensor_constants(){
     VFT_Exit_Lower=bat_vol*i2c_eeprom_read_float(VFT_EXIT_LOW);
     abs_mains_fail_tolerance=(uint16_t)i2c_eeprom_read_byte(DEV_ABS_MF_PER)*(uint16_t)3600;
     equ_fail_tolerance=(uint16_t)i2c_eeprom_read_byte(EQ_MF_PER)*(uint16_t)3600;
+#if DEBUG
+    ESP_LOGI("-----","----------------------------------");
+    ESP_LOGI("DEBUG","bat_mains_chg_out_v: %f \n",bat_mains_chg_out_v);
+    ESP_LOGI("DEBUG","max_solar_current: %f \n",max_solar_current);
+    ESP_LOGI("-----","----------------------------------");
+#endif
     if(dev_state_flag&Bit(2)){
         useable_SOC1=i2c_eeprom_read_float(USEABLE_SOC);
     }

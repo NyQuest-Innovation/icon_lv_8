@@ -45,7 +45,7 @@ void init_spiffs(void){
   else{ ESP_LOGI(TAG, "Partition size: total: %d, used: %d", total, used); }
 }
 
-char urls[11][32] = { 
+char urls[12][32] = { 
   "/spiffs/getReadWrite.txt", 
   "/spiffs/updateCalib.txt", 
   "/spiffs/updateConfig.txt",
@@ -56,7 +56,8 @@ char urls[11][32] = {
   "/spiffs/getCert.txt",
   "/spiffs/google.cer",
   "/spiffs/updateOTA.txt",
-  "/spiffs/domain.txt"
+  "/spiffs/domain.txt",
+  "/spiffs/ota_url.txt"
 };
 
 void read_domain(char *ptr){
@@ -81,13 +82,15 @@ void read_spiffs(char *ptr, int type ){
   bzero(ptr,2048);
   ESP_LOGI(TAG, "reading from %s",urls[type]);
   FILE* f = fopen(urls[type], "r");
-  fseek(f, 0, SEEK_END);
-  long fsize = ftell(f);
-  fseek(f, 0, SEEK_SET);  /* same as rewind(f); */
-  fread(ptr, 1, fsize, f);
-  fclose(f);
-  ptr[fsize] = 0;
-//  ESP_LOGI(TAG,"Data read is \n %s",ptr);
+  if(f != NULL) {
+      fseek(f, 0, SEEK_END);
+      long fsize = ftell(f);
+      fseek(f, 0, SEEK_SET);  /* same as rewind(f); */
+      fread(ptr, 1, fsize, f);
+      fclose(f);
+      ptr[fsize] = 0;
+      //  ESP_LOGI(TAG,"Data read is \n %s",ptr);
+  }
 }
 
 void update_spiffs( char *param, int type ){

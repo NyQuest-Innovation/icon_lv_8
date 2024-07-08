@@ -34,6 +34,9 @@
 #define DEVICE_RESTART_CNT_FILE "/spiffs/restart_count.txt" 
 
 #define MAX_EEPROM_READ 5
+#define DYNAMIC_OTA_URL_KEY "/api/getOtaVersion/"
+#define DYNAMIC_OTA_URL_KEY_LEN     19
+
 extern uint8_t server_cert_pem_start[2048];
 extern esp_err_t  client_event_handler(esp_http_client_event_t *evt);
 extern uint8_t ap_ssid_buff[AP_SSID_LEN], ap_psw_buff[AP_PSW_LEN];
@@ -641,12 +644,20 @@ static esp_err_t _http_client_init_cb(esp_http_client_handle_t http_client)
 
 void perform_ota(void *params){
   extern uint8_t https_password[SERV_IP_LEN];
+  char url[2048];
+  char ota_api[2048];
+  memset(&ota_api,0,sizeof(ota_api));
+  memset(&url,0,sizeof(url));
   esp_err_t ota_finish_err = ESP_OK;
-  while (true){
-    char url[2048];
+  while (true) {
     read_domain(url);
-    strcat(url,"/api/getOta/");
     xSemaphoreTake(otaSemaphore, portMAX_DELAY);
+    read_spiffs((char*)ota_api,ota_url_update);
+    if(strncmp(ota_api,DYNAMIC_OTA_URL_KEY,DYNAMIC_OTA_URL_KEY_LEN) == 0) {
+        strcat(url,ota_api);
+    } else {
+        strcat(url,"/api/getOta/");
+    }
     ESP_LOGI(TAG, "Invoking OTA");
     ESP_LOGI(TAG, "\n[%ld], OTA: URL: %s \n",time(NULL),url);
     esp_http_client_config_t clientConfig = {
@@ -724,7 +735,7 @@ void perform_ota(void *params){
     ESP_LOGE(TAG, "[%ld] OTA: ESP_HTTPS_OTA upgrade failed",time(NULL));
     stop_lptask = 0;
     fw_update = 1;
-  }  
+  } 
 }
 
 void perform_factory_reset(void *params){

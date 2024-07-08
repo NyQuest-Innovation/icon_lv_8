@@ -6,6 +6,8 @@
 #define TAG "parseJSON"
 
 extern https_request_buffer_body_t https_request_buffer_body;
+static bool writeInfo_status = false;
+static bool writeInfo_req_rxd_from_server = false;
 
 uint16_t write_info_address[98]={
   EE_SERV_IP_ADDR, EE_SERV_PORT_ADDR, EE_AP_SSID_ADDR, EE_AP_PSW_ADDR,    
@@ -123,6 +125,14 @@ void detect_domain_msg(cJSON *payload){
   }
 }
 
+void detect_ota_url(cJSON *payload){
+    cJSON *readInfo = cJSON_GetObjectItem(payload, "ota_url");
+    if(readInfo!=NULL){
+        ESP_LOGI(TAG,"Parse ota_url - %s",readInfo->valuestring);
+        update_spiffs(readInfo->valuestring,ota_url_update);
+    }
+}
+
 void httpsmsgparse(char *https_receive_buffer,https_request_buffer_body_t *param){  
   if( https_req_buff_peek(param) == update_certificate ){
     update_spiffs(https_receive_buffer,update_certificate);
@@ -134,9 +144,10 @@ void httpsmsgparse(char *https_receive_buffer,https_request_buffer_body_t *param
       ESP_LOGI(TAG,"Detected device");
       if(detect_msgType(payload)){
         ESP_LOGI(TAG,"Message type matched");
+        detect_domain_msg(payload);
+        detect_ota_url(payload);
         detect_write_msg(payload);
         detect_read_msg(payload);
-        detect_domain_msg(payload);
       }
     }
     cJSON_Delete(payload);
@@ -180,36 +191,116 @@ void detect_read_msg(cJSON *payload){
   }
 }
 
+
+void set_writeInfo_status(bool status)
+{
+    writeInfo_status = status;
+}
+
+bool get_writeInfo_status()
+{
+    return writeInfo_status;
+}
+
+void set_write_req_rxd_from_server(bool status)
+{
+    writeInfo_req_rxd_from_server = status;
+}
+
+bool get_write_req_rxd_from_server()
+{
+    return writeInfo_req_rxd_from_server;
+}
+
 void parse_write_msg(cJSON *writeInfo)
 {
     uint8_t updated_eeprom_content = 0;
-    ESP_LOGI(TAG,"inside parse_write_msg");
-    https_req_buff_write(&https_request_buffer_body,send_response);
+    uint8_t read_back_val_8 = 0, tmp_uint8_val = 0;
+    uint16_t read_back_val_16 = 0, tmp_uint16_val = 0;
+    float read_back_val_float = 0.0, tmp_float_val = 0;
+    char read_back_string[32] = {0x0,};
+    int ret = -1;
+    bool eeprom_updation_status = false;
+
+    ESP_LOGI(TAG,"Parsing writeInfo content");
     char temp_addr[5];
-    
+
     for(int i=0;i<sizeof(write_info_address)/sizeof(uint16_t);i++) {
         sprintf(temp_addr,"%x",write_info_address[i]);
         cJSON *readvalue = cJSON_GetObjectItem(writeInfo,temp_addr);
-        if(readvalue!=NULL){
+        if(readvalue!=NULL) {
+            // Set a flag indicating a write request from server is received
+            set_write_req_rxd_from_server(true);
             updated_eeprom_content = 0;
-            if(write_info_length[i]==4){
-                ESP_LOGI(TAG,"Float: Writing to address %s and the value is %f",temp_addr,atof(readvalue->valuestring));
-                ee24lc256_write_float(write_info_address[i],atof(readvalue->valuestring));
+            if(write_info_length[i] == 1) {
+                tmp_uint8_val = atoi(readvalue->valuestring);
+                ESP_LOGI(TAG,"8bit int: Writing to address %s and the value is %d",temp_addr,atoi(readvalue->valuestring));
+                ee24lc256_write_byte(write_info_address[i],tmp_uint8_val);
                 vTaskDelay(100/portTICK_PERIOD_MS);
                 updated_eeprom_content = 1;
-            } else {
-                if(write_info_length[i]==2){
-                    ESP_LOGI(TAG,"16bit int: Writing to address %s and the value is %d",temp_addr,atoi(readvalue->valuestring));
-                    ee24lc256_write_int16(write_info_address[i],atoi(readvalue->valuestring));
-                    vTaskDelay(100/portTICK_PERIOD_MS);
-                    updated_eeprom_content = 1;
-                } else {
-                    ESP_LOGI(TAG,"8bit int: Writing to address %s and the value is %d",temp_addr,atoi(readvalue->valuestring));
-                    ee24lc256_write_byte(write_info_address[i],atoi(readvalue->valuestring));
-                    vTaskDelay(100/portTICK_PERIOD_MS);
-                    updated_eeprom_content = 1;
+                // Read back the value and verify
+                read_back_val_8 = ee24lc256_read_byte(write_info_address[i]);
+                ESP_LOGI(TAG,"8bit int: Reading from address : [%s], Read value : %d, Expected value: %d",temp_addr,read_back_val_8,tmp_uint8_val);
+                if(read_back_val_8 == tmp_uint8_val) { // Matches
+                    // Mark as eeprom updation was success
+                    eeprom_updation_status = true;
+                } else { // Doesn't match
+                    // Mark as eeprom updation was failure
+                    eeprom_updation_status = false;
                 }
+            } else if(write_info_length[i] == 2) {
+                tmp_uint16_val = atoi(readvalue->valuestring);
+                ESP_LOGI(TAG,"16bit int: Writing to address %s and the value is %d",temp_addr,tmp_uint16_val);
+                ee24lc256_write_int16(write_info_address[i],tmp_uint16_val);
+                vTaskDelay(100/portTICK_PERIOD_MS);
+                updated_eeprom_content = 1;
+                // Read back the value and verify
+                read_back_val_16 = ee24lc256_read_int16(write_info_address[i]);
+                ESP_LOGI(TAG,"16bit int: Reading from address : [%s], Read value : %d, Expected value: %d",temp_addr,read_back_val_16,tmp_uint16_val);
+                if(read_back_val_16 == tmp_uint16_val) { // Matches
+                    eeprom_updation_status = true;
+                } else { // Doesn't match
+                    eeprom_updation_status = false;
+                }
+            } else if(write_info_length[i] == 4) {
+                tmp_float_val = atof(readvalue->valuestring);
+                ESP_LOGI(TAG,"Float: Writing to address %s and the value is %f",temp_addr,tmp_float_val);
+                ee24lc256_write_float(write_info_address[i],tmp_float_val);
+                vTaskDelay(100/portTICK_PERIOD_MS);
+                updated_eeprom_content = 1;
+                // Read back the value and verify
+                read_back_val_float = ee24lc256_read_float(write_info_address[i]);
+                ESP_LOGI(TAG,"Float: Reading from address : [%s], Read value : %f, Expected value: %f",temp_addr,read_back_val_float,tmp_float_val);
+                if(read_back_val_float == tmp_float_val) { // Matches
+                    eeprom_updation_status = true;
+                } else { // Doesn't match
+                    eeprom_updation_status = false;
+                }
+            } else if(write_info_length[i] == 32) {
+                ESP_LOGI(TAG,"String: Writing to address %s and the value is %s",temp_addr,readvalue->valuestring);
+                ee24lc256_write_buff(write_info_address[i],(uint8_t*)readvalue->valuestring,write_info_length[i]);
+                vTaskDelay(100/portTICK_PERIOD_MS);
+                updated_eeprom_content = 1;
+                // Read back the value and verify
+                memset(read_back_string,0,sizeof(read_back_string));
+                ret = ee24lc256_read_buff(write_info_address[i],(uint8_t*)read_back_string,sizeof(read_back_string));
+                ESP_LOGI(TAG,"String: Reading from address : [%s], Read value : %s, Expected value: %s",temp_addr,read_back_string,readvalue->valuestring);
+                if(ret == 0) { // Read is success
+                    if(strcmp(read_back_string,readvalue->valuestring) == 0) { // Matches
+                        eeprom_updation_status = true;
+                    } else { // Doesn't match
+                        eeprom_updation_status = false;
+                    }
+                } else { // Read fails, hence mark flag as EEPROM updation as failure
+                    eeprom_updation_status = false;
+                }
+
+            } else { // Any address location of which length is not in the list comes, // No chance to reach here
+                ESP_LOGI(TAG,"Support to handle EEPROM write at %04X with value %s of length %d is not available",write_info_address[i],readvalue->valuestring,write_info_length[i]);
+                eeprom_updation_status = false;
             }
+
+
             if(updated_eeprom_content == 1) {
                 if (write_info_address[i] >= EE_CONFIG_DAT_START_ADDR && write_info_address[i] < EE_CONFIG_DONE_ADDR) {
                     ESP_LOGI("SERVER UPDATE", "UPDATING CRC INTO EE_CONFIG_CRC_ADDR");
@@ -224,11 +315,30 @@ void parse_write_msg(cJSON *writeInfo)
                     ESP_LOGI("SERVER UPDATE", "DONE UPDATING CALIB CRC");
                 }
             }
+            // If EEPROM updation fail, break [Should break only after updating CRC]
+            if(eeprom_updation_status == false) {
+                break;
+            }
 
         }
     }
     load_wifi_param();
     load_sensor_constants();
+
+    if(get_write_req_rxd_from_server() == true) {
+        if(eeprom_updation_status == true) {
+            ESP_LOGI("SERVER UPDATE", "UPDATING EEPROM CONTENTS SUCCESS, SENDING FEED BACK AS SUCCESS");
+        } else {
+            ESP_LOGI("SERVER UPDATE", "UPDATING EEPROM CONTENTS FAILS, SENDING FEED BACK AS FAILURE");
+        }
+        // Set the flag indicating EEPROM updation was success or failure
+        set_writeInfo_status(eeprom_updation_status);
+        /* Q to send the response back to server, send the response only 
+         * if writeInfo has contents in it with flag indicating
+         * the EEPROM write is success or not
+         */
+        https_req_buff_write(&https_request_buffer_body,send_response);
+    }
 }
 
 void parse_read_msg(cJSON *readInfo) {
