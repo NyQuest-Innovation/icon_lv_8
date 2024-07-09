@@ -610,7 +610,7 @@ void state_change_algorithm() {
     
     if(enable_early_ft_entry){
         if((total_time>7200)&&(algo_param.dev_algo_state!=ALGO_STATE_BAT_SOL_FRC_TRIP_6)&&(algo_param.dev_algo_state!=ALGO_STATE_BAT_FRC_TRIP_4)&&(Bat_SOC>0.9*total_bat_capacity)){
-            //early_ft_entry=1; // Specially commented for customer Shibu Thomas
+            early_ft_entry=1;
             enable_early_ft_entry=0;
         }
     }
