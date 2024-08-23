@@ -32,6 +32,7 @@ typedef enum{
     useable_soc_req = 8,
     factory_update = 16,
     factory_reset = 32,
+    reboot_req_from_server = 64,
 }server_read_responses_t;
 
 struct https_request_buffer_body{

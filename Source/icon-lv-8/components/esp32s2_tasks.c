@@ -750,7 +750,7 @@ void perform_system_reset(void *params){
   while(1){
     xSemaphoreTake(serverReset,portMAX_DELAY);
     i2c_eeprom_write_buff(0xFE7F,(uint8_t *) &common_flag,2);
-    printf("restarting in 5 seconds\n");
+    printf("Restarting in 5 seconds\n");
     set_algo_status(1);
     watchdog_timer_stop=1;
     vTaskDelay(pdMS_TO_TICKS(5000));

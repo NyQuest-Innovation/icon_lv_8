@@ -372,4 +372,10 @@ void parse_read_msg(cJSON *readInfo) {
         ESP_LOGI(TAG,"parse read: factory reset"); 
         fcn_factory_reset(); 
     };
+
+    if(parse_response(readInfo->valueint,reboot_req_from_server)) {  
+        ESP_LOGI(TAG,"parse read: Reboot request from server received");
+        post_common_flag(CF_RESET_DEV);
+    };
+
 }
