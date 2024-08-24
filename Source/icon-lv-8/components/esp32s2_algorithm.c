@@ -2379,7 +2379,7 @@ void load_sensor_constants(){
 	pac_sol_v_const = i2c_eeprom_read_float(EE_PAC_SOL_V_CONST_ADDR);
 	uc_sol_v_const = i2c_eeprom_read_float(EE_UC_SOL_V_CONST_ADDR);
 	pac_sol_i_const = i2c_eeprom_read_float(EE_PAC_SOL_I_CONST_ADDR);
-    //pac_sol_i_const = pac_sol_i_const/2; // HACK FOR EEPROM pac_sol_i_const value
+    pac_sol_i_const = pac_sol_i_const/2; // HACK FOR EEPROM pac_sol_i_const value
     pac_sol_i_offset = i2c_eeprom_read_float(EE_PAC_SOL_I_OFF_ADDR);
 	pac_sol_p_const = i2c_eeprom_read_float(EE_PAC_SOL_P_CONST_ADDR);
 	ct_load_i_offset = i2c_eeprom_read_int16(EE_CT_LOAD_I_OFST_ADDR);
